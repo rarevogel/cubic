@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- isometric cube outline: cyan shell, magenta inner edges (same as the web app's logo) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:strokeColor="#55ffff" android:strokeWidth="5" android:strokeLineJoin="round"
+        android:pathData="M54,27 L77,40 L77,66 L54,79 L31,66 L31,40 Z" />
+    <path android:strokeColor="#ff55ff" android:strokeWidth="4" android:strokeLineJoin="round" android:strokeLineCap="round"
+        android:pathData="M31,40 L54,53 L77,40 M54,53 L54,79" />
+</vector>

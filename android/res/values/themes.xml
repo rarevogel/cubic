@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="achtergrond">#05070d</color>
+    <color name="icoon_achtergrond">#05070d</color>
+    <style name="Cubic" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/achtergrond</item>
+        <item name="android:colorBackground">@color/achtergrond</item>
+        <item name="android:statusBarColor">@color/achtergrond</item>
+        <item name="android:navigationBarColor">@color/achtergrond</item>
+        <item name="android:colorAccent">#55ffff</item>
+    </style>
+</resources>

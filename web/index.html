@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#05070d">
+<meta name="description" content="Cubic: a modern take on Open Cubic Player. Tracker modules, chiptunes, AdLib, MIDI and audio files in the browser.">
+<title>Cubic Player</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2305070d'/%3E%3Cpath d='M16 5l10 5.5v11L16 27 6 21.5v-11z' fill='none' stroke='%2355ffff' stroke-width='2.4'/%3E%3Cpath d='M6 10.5l10 5.5 10-5.5M16 16v11' fill='none' stroke='%23ff55ff' stroke-width='2'/%3E%3C/svg%3E">
+<style>
+/*FONTS*/
+:root {
+  --bg: #05070d; --panel: #0a0f1c; --panel2: #0d1426; --line: #1b2744; --line2: #26365c;
+  --fg: #c9d4ea; --hi: #ffffff; --dim: #6b7a99; --faint: #2b3758;
+  --cyan: #55ffff; --magenta: #ff55ff; --yellow: #ffff55; --green: #55ff55; --red: #ff5555; --blue: #6f7dff; --amber: #ffaa33;
+  --accent: var(--cyan); --accent2: var(--magenta);
+  --glow: 0 0 6px color-mix(in srgb, var(--accent) 55%, transparent);
+  --r: 8px;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  --disp: "VT323", "JetBrains Mono", monospace;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  color-scheme: dark;
+}
+:root[data-theme="dos"] { --bg: #00006a; --panel: #0000a8; --panel2: #0a0ab4; --line: #3f3fd0; --line2: #5555ff; --fg: #d8d8ff; --dim: #8f8fe0; --faint: #2a2ac0; --accent: #55ffff; --accent2: #ffff55; }
+:root[data-theme="amber"] { --bg: #0c0700; --panel: #140c02; --panel2: #1b1104; --line: #3a2608; --line2: #5a3c0e; --fg: #ffcf87; --hi: #fff1d6; --dim: #a8742c; --faint: #4a3010; --cyan: #ffb340; --magenta: #ff8a1f; --yellow: #ffe08a; --green: #ffc766; --red: #ff6a2a; --blue: #d98c2b; --accent: #ffb340; --accent2: #ff8a1f; }
+:root[data-theme="phosphor"] { --bg: #010a03; --panel: #031207; --panel2: #05190a; --line: #0d3a18; --line2: #155a25; --fg: #9dffb0; --hi: #e6ffeb; --dim: #3fa35a; --faint: #0f3a1b; --cyan: #5dff8a; --magenta: #b6ff5d; --yellow: #e2ff7a; --green: #5dff8a; --red: #ffd45d; --blue: #3ddc84; --accent: #5dff8a; --accent2: #b6ff5d; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.45 var(--mono); -webkit-tap-highlight-color: transparent; overflow: hidden; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+::selection { background: var(--accent); color: var(--bg); }
+.scan::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.18) 2px 3px); mix-blend-mode: multiply; }
+.scan.glow .disp, .scan.glow .glowt { text-shadow: var(--glow); }
+
+#app { display: grid; grid-template-rows: auto auto auto 1fr; height: 100%; max-width: 1680px; margin: 0 auto; padding: 10px 12px calc(10px + var(--safe-b)); gap: 8px; }
+.disp { font-family: var(--disp); letter-spacing: .02em; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); position: relative; }
+.panel.titled::before { content: attr(data-title); position: absolute; top: -8px; left: 12px; padding: 0 6px; background: var(--bg); color: var(--dim); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; line-height: 14px; }
+
+/* header */
+header.top { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 9px; flex: none; }
+.brand svg { width: 30px; height: 30px; }
+.brand b { font: 30px/1 var(--disp); color: var(--hi); letter-spacing: .08em; }
+.brand b i { font-style: normal; color: var(--accent); }
+.brand small { display: block; font-size: 9.5px; color: var(--dim); letter-spacing: .2em; margin-top: -2px; }
+.tbtns { margin-left: auto; display: flex; gap: 6px; }
+.btn { background: var(--panel2); border: 1px solid var(--line2); border-radius: 6px; padding: 6px 11px; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; transition: border-color .12s, background .12s; }
+.btn:hover { border-color: var(--accent); }
+.btn:focus-visible, .ib:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn.pri { background: color-mix(in srgb, var(--accent) 16%, var(--panel2)); border-color: color-mix(in srgb, var(--accent) 55%, var(--line2)); color: var(--hi); }
+.btn svg, .ib svg { width: 16px; height: 16px; flex: none; }
+.ib { width: 34px; height: 34px; display: inline-grid; place-items: center; background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 0; }
+.ib:hover { border-color: var(--line2); background: var(--panel2); }
+.ib.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--line2)); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+/* now playing / status */
+.now { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 18px; padding: 12px 14px 10px; }
+.title { font: 34px/1 var(--disp); color: var(--hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sub { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sub b { color: var(--fg); font-weight: 500; }
+.timebig { font: 40px/1 var(--disp); color: var(--accent); text-align: right; grid-row: span 2; align-self: center; }
+.timebig span { color: var(--dim); font-size: 26px; }
+.fields { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; }
+.f { display: inline-flex; gap: 6px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); font-size: 12px; }
+.f i { font-style: normal; color: var(--dim); text-transform: uppercase; font-size: 10px; letter-spacing: .1em; align-self: center; }
+.f b { color: var(--yellow); font-weight: 500; }
+.meters { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; align-items: center; margin-top: 4px; }
+.meters i { font-style: normal; font-size: 10px; color: var(--dim); }
+.meters canvas { width: 100%; height: 7px; display: block; }
+.minispec { grid-column: 1 / -1; width: 100%; height: 36px; display: block; margin-top: 8px; }
+.eqbar { position: absolute; top: 8px; left: 12px; right: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--dim); }
+.eqbar[hidden] { display: none; }
+.eqbar select { background: var(--bg); border: 1px solid var(--line2); border-radius: 6px; padding: 4px 8px; color: var(--fg); }
+
+/* transport */
+.transport { display: flex; align-items: center; gap: 6px; padding: 8px 10px; flex-wrap: wrap; }
+.play { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 15%, var(--panel2)); color: var(--hi); display: grid; place-items: center; box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 20%, transparent); }
+.play svg { width: 20px; height: 20px; }
+.seek { flex: 1 1 260px; display: flex; align-items: center; gap: 10px; min-width: 200px; }
+.seek output { font-size: 12px; color: var(--dim); min-width: 44px; text-align: center; }
+.songsel { display: inline-flex; align-items: center; gap: 2px; padding: 0 4px; border: 1px solid var(--line); border-radius: 6px; }
+.songsel span { font-size: 12px; min-width: 52px; text-align: center; color: var(--fg); }
+input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; width: 100%; height: 22px; margin: 0; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--accent) 0 var(--p, 0%), var(--line) var(--p, 0%)); }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--line); }
+input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--accent); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -4px; border-radius: 3px; background: var(--hi); border: 2px solid var(--accent); }
+input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 3px; background: var(--hi); border: 2px solid var(--accent); }
+
+.mixer { display: none; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px 14px; padding: 4px 12px 6px; border-top: 1px dashed var(--line); width: 100%; }
+.mixer.open { display: grid; }
+.mx label { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
+.mx label b { color: var(--fg); font-weight: 500; letter-spacing: 0; }
+
+/* body */
+.body { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 10px; min-height: 0; }
+.views { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.tabs { display: flex; gap: 2px; padding: 6px 6px 0; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); flex: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { background: none; border: 1px solid transparent; border-bottom: 0; padding: 6px 12px 7px; border-radius: 6px 6px 0 0; color: var(--dim); white-space: nowrap; font-size: 12px; position: relative; top: 1px; }
+.tab u { text-decoration: none; color: var(--yellow); }
+.tab.on { color: var(--hi); background: var(--panel2); border-color: var(--line); }
+.tab.on::after { content: ""; position: absolute; left: 10px; right: 10px; top: 0; height: 2px; background: var(--accent); border-radius: 0 0 2px 2px; }
+.viewport { position: relative; flex: 1; min-height: 0; background: var(--bg); border-radius: 0 0 var(--r) var(--r); overflow: hidden; }
+.viewport canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: pan-y; }
+.html-view { position: absolute; inset: 0; overflow: auto; padding: 14px 16px; display: none; }
+.html-view.show { display: block; }
+.html-view h3 { font: 24px/1.1 var(--disp); color: var(--accent); margin: 14px 0 6px; font-weight: normal; letter-spacing: .04em; }
+.html-view h3:first-child { margin-top: 0; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; }
+.kv dt { color: var(--dim); } .kv dd { margin: 0; color: var(--fg); word-break: break-word; }
+.msg { white-space: pre-wrap; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; font-size: 12px; overflow-x: auto; }
+.ilist { columns: 2 240px; column-gap: 18px; font-size: 12px; margin: 0; padding: 0; list-style: none; }
+.ilist li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ilist li b { color: var(--dim); font-weight: 400; margin-right: 8px; }
+
+/* side */
+.side { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.side .tabs { padding-right: 6px; }
+.side .tools { display: flex; gap: 4px; padding: 6px 6px; border-bottom: 1px solid var(--line); align-items: center; flex-wrap: wrap; }
+.side .tools input[type=search], .side .tools input[type=url] { flex: 1; min-width: 80px; background: var(--bg); border: 1px solid var(--line2); border-radius: 6px; padding: 5px 9px; outline: none; }
+.side .tools input:focus { border-color: var(--accent); }
+.list { flex: 1; overflow-y: auto; min-height: 0; padding: 4px 0; }
+.row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 5px 8px 5px 6px; border-left: 2px solid transparent; cursor: pointer; }
+.row:hover { background: var(--panel2); }
+.row .n { color: var(--faint); font-size: 11px; text-align: right; }
+.row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .t small { display: block; color: var(--dim); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; }
+.row .d { color: var(--dim); font-size: 11px; display: flex; align-items: center; gap: 2px; }
+.row.cur { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.row.cur .t { color: var(--hi); }
+.row.cur .n { color: var(--accent); }
+.row .x { opacity: 0; width: 26px; height: 26px; }
+.row:hover .x, .row:focus-within .x { opacity: 1; }
+.tag { font-size: 9.5px; padding: 0 5px; border-radius: 3px; border: 1px solid var(--line2); color: var(--dim); text-transform: uppercase; letter-spacing: .05em; }
+.folder { display: flex; align-items: center; gap: 6px; padding: 6px 8px; color: var(--yellow); cursor: pointer; position: sticky; top: -4px; background: var(--panel); z-index: 1; border-bottom: 1px solid var(--line); }
+.folder span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder small { color: var(--dim); }
+.empty { padding: 26px 18px; color: var(--dim); text-align: center; }
+.empty .disp { font-size: 26px; color: var(--fg); display: block; margin-bottom: 6px; }
+.empty .btn { margin: 4px; }
+
+/* drop overlay & dialogs */
+.drop { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; background: color-mix(in srgb, var(--bg) 80%, transparent); }
+.drop.show { display: grid; }
+.drop div { border: 2px dashed var(--accent); border-radius: 16px; padding: 50px 70px; font: 40px var(--disp); color: var(--accent); text-align: center; background: var(--panel); }
+dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line2); border-radius: 12px; padding: 0; width: min(720px, calc(100vw - 24px)); max-height: calc(100vh - 40px); box-shadow: 0 20px 80px rgba(0,0,0,.6); }
+dialog::backdrop { background: rgba(0,0,0,.6); }
+dialog header { display: flex; align-items: center; padding: 12px 14px 10px 18px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 1; }
+dialog header h2 { margin: 0; font: 28px/1 var(--disp); color: var(--hi); font-weight: normal; flex: 1; letter-spacing: .04em; }
+dialog .dbody { padding: 14px 18px 18px; overflow-y: auto; }
+.set { display: grid; grid-template-columns: 1fr minmax(0, 230px); gap: 10px 16px; align-items: center; }
+.set h4 { grid-column: 1 / -1; margin: 10px 0 0; font: 21px var(--disp); color: var(--accent); font-weight: normal; letter-spacing: .04em; }
+.set label small { display: block; color: var(--dim); font-size: 11px; }
+.set select, .set input[type=number] { background: var(--bg); border: 1px solid var(--line2); border-radius: 6px; padding: 5px 8px; width: 100%; }
+.seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 6px; overflow: hidden; }
+.seg button { background: none; border: 0; padding: 5px 10px; white-space: nowrap; color: var(--dim); }
+.seg button.on { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--hi); }
+.keys { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 12px; }
+kbd { font: 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line2); border-bottom-width: 2px; border-radius: 4px; background: var(--bg); color: var(--yellow); margin-right: 2px; }
+.fmt { display: grid; grid-template-columns: minmax(0, 220px) 1fr; gap: 6px 14px; font-size: 12px; }
+.fmt dt { color: var(--accent); } .fmt dd { margin: 0; color: var(--fg); }
+.toast { position: fixed; left: 50%; bottom: calc(24px + var(--safe-b)); transform: translateX(-50%) translateY(20px); background: var(--panel2); border: 1px solid var(--line2); border-radius: 8px; padding: 8px 14px; opacity: 0; transition: .2s; z-index: 70; max-width: calc(100vw - 30px); pointer-events: none; }
+.toast.show { opacity: 1; transform: translateX(-50%); }
+.toast.err { border-color: var(--red); }
+.progress { height: 2px; background: var(--accent); position: fixed; top: 0; left: 0; z-index: 80; transition: width .2s; }
+
+.mobnav { display: none; }
+.hide-sm { }
+@media (max-width: 1100px) { .body { grid-template-columns: minmax(0, 1fr) 300px; } }
+@media (max-width: 820px) {
+  #app { grid-template-rows: auto auto auto 1fr auto; padding: 8px 8px calc(6px + var(--safe-b)); gap: 6px; }
+  .brand small, .hide-sm { display: none; }
+  .brand b { font-size: 26px; }
+  .tbtns .btn span { display: none; }
+  .tbtns .btn { padding: 6px 8px; }
+  .now { padding: 10px 11px 8px; }
+  .title { font-size: 27px; }
+  .timebig { font-size: 30px; } .timebig span { font-size: 20px; }
+  .fields .f.opt { display: none; }
+  .minispec { height: 24px; margin-top: 6px; }
+  .mixer { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .side { display: none; }
+  #app.lib .views { display: none; } #app.lib .side { display: flex; }
+  .mobnav { display: flex; gap: 6px; }
+  .mobnav button { flex: 1; padding: 9px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; color: var(--dim); display: flex; justify-content: center; align-items: center; gap: 8px; }
+  .mobnav button.on { color: var(--hi); border-color: var(--accent); }
+  .row .x { opacity: 1; }
+  .transport { gap: 2px 4px; }
+  .seek { order: 10; flex-basis: 100%; }
+  .transport .play { margin: 0 4px; }
+  #bLoop { margin-left: auto; }
+  .set { grid-template-columns: 1fr; }
+}
+@media (max-height: 560px) and (min-width: 821px) { .meters { display: none; } .now .fields { display: none; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4l11 6v12l-11 6-11-6V10z" fill="none" stroke="var(--accent)" stroke-width="2.2"/><path d="M5 10l11 6 11-6M16 16v12" fill="none" stroke="var(--accent2)" stroke-width="1.8"/></svg>
+      <div><b>CUB<i>I</i>C</b><small>MUSIC PLAYER</small></div>
+    </div>
+    <div class="tbtns">
+      <button class="btn pri" id="bOpen" title="Open files (O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><span>Open files</span></button>
+      <button class="btn" id="bFolder" title="Open a folder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Folder</span></button>
+      <button class="ib" id="bSettings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      <button class="ib" id="bHelp" title="Help, keys and formats (?)" aria-label="Help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/></svg></button>
+    </div>
+  </header>
+
+  <section class="panel now titled" data-title="now playing">
+    <div class="title glowt" id="title">Cubic Player</div>
+    <div class="timebig disp glowt" id="time">00:00<span> / 00:00</span></div>
+    <div class="sub" id="sub">Tracker modules · chiptunes · AdLib · MIDI · audio</div>
+    <div class="fields" id="fields"></div>
+    <canvas id="mS" class="minispec" aria-hidden="true"></canvas>
+    <div class="meters"><i>L</i><canvas id="mL"></canvas><i>R</i><canvas id="mR"></canvas></div>
+  </section>
+
+  <section class="panel transport">
+    <button class="ib" id="bPrev" title="Previous (Backspace)" aria-label="Previous"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+    <button class="play" id="bPlay" title="Play / pause (Space)" aria-label="Play"><svg viewBox="0 0 24 24" fill="currentColor" id="playIcon"><path d="M7 4v16l13-8z"/></svg></button>
+    <button class="ib" id="bNext" title="Next (Enter)" aria-label="Next"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+    <div class="seek"><output id="tPos">0:00</output><input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position"><output id="tLen">0:00</output></div>
+    <div class="songsel" id="songsel" style="display:none" title="Subsong ( , and . )"><button class="ib" id="sPrev" aria-label="Previous subsong"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 6v12L7 12z"/></svg></button><span id="songN">1 / 1</span><button class="ib" id="sNext" aria-label="Next subsong"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 6v12l8-6z"/></svg></button></div>
+    <button class="ib" id="bLoop" title="Repeat: off / song / playlist (L)" aria-label="Repeat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg></button>
+    <button class="ib" id="bShuffle" title="Shuffle (S)" aria-label="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
+    <button class="ib" id="bMixer" title="Mixer" aria-label="Mixer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></button>
+    <div class="mixer" id="mixer">
+      <div class="mx"><label>Volume <b id="vVol">100%</b></label><input type="range" id="rVol" min="0" max="150" value="100"></div>
+      <div class="mx"><label>Balance <b id="vBal">0</b></label><input type="range" id="rBal" min="-100" max="100" value="0"></div>
+      <div class="mx"><label>Panning <b id="vWid">100</b></label><input type="range" id="rWid" min="-100" max="100" value="100"></div>
+      <div class="mx"><label>Pitch <b id="vPit">100%</b></label><input type="range" id="rPit" min="50" max="200" value="100"></div>
+      <div class="mx"><label>Speed <b id="vTem">100%</b></label><input type="range" id="rTem" min="50" max="200" value="100"></div>
+    </div>
+  </section>
+
+  <main class="body">
+    <section class="panel views">
+      <nav class="tabs" id="vtabs" role="tablist">
+        <button class="tab" data-v="channels"><u>C</u>hannels</button>
+        <button class="tab" data-v="tracks"><u>T</u>racks</button>
+        <button class="tab" data-v="analyzer"><u>A</u>nalyzer</button>
+        <button class="tab" data-v="eq"><u>E</u>qualizer</button>
+        <button class="tab" data-v="scopes">Sc<u>o</u>pes</button>
+        <button class="tab" data-v="phase">Phase (<u>B</u>)</button>
+        <button class="tab" data-v="notes"><u>N</u>ote dots</button>
+        <button class="tab" data-v="wuerfel"><u>W</u>ürfel</button>
+        <button class="tab" data-v="info"><u>I</u>nfo</button>
+      </nav>
+      <div class="viewport" id="viewport">
+        <canvas id="cv"></canvas>
+        <div class="html-view" id="infoView"></div>
+        <div class="eqbar" id="eqbar" hidden></div>
+      </div>
+    </section>
+    <aside class="panel side">
+      <nav class="tabs" id="stabs">
+        <button class="tab" data-s="playlist">Playlist <span id="plCount" class="tag">0</span></button>
+        <button class="tab" data-s="library">Library</button>
+        <button class="tab" data-s="online">Online</button>
+      </nav>
+      <div class="tools" id="tools"></div>
+      <div class="list" id="list"></div>
+    </aside>
+  </main>
+  <nav class="mobnav" id="mobnav">
+    <button data-m="player" class="on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l3-8 4 16 3-8h5"/></svg>Visuals</button>
+    <button data-m="lib"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Playlist &amp; library</button>
+  </nav>
+</div>
+
+<div class="drop" id="drop"><div>DROP TO ADD<br><small style="font-size:20px;color:var(--dim)">files · folders · archives</small></div></div>
+<div class="toast" id="toast"></div>
+<div class="progress" id="progress" style="width:0"></div>
+<input type="file" id="fileIn" multiple hidden>
+<input type="file" id="dirIn" webkitdirectory multiple hidden>
+<input type="file" id="sfIn" accept=".sf2" hidden>
+
+<dialog id="dSettings"><header><h2>SETTINGS</h2><button class="ib" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header><div class="dbody" id="settingsBody"></div></dialog>
+<dialog id="dHelp"><header><h2>HELP</h2><button class="ib" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header><div class="dbody" id="helpBody"></div></dialog>
+
+<!--ASSETS-->
+<script>
+/*APP*/
+</script>
+</body>
+</html>

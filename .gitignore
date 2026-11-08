@@ -1,0 +1,10 @@
+node_modules/
+build/
+engines/obj/
+engines/src/
+android/build/
+android/assets/
+android/*.apk
+android/*.idsig
+*.jks
+*.keystore
